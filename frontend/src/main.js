@@ -6,12 +6,14 @@ import router from './router'
 // Font Awesome Imports
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { faPaperPlane } from '@fortawesome/free-solid-svg-icons';
+import { faPaperPlane, faMicrophone, faMicrophoneSlash } from '@fortawesome/free-solid-svg-icons';
 
 const app = createApp(App)
 
 library.add(
     faPaperPlane,
+    faMicrophone,
+    faMicrophoneSlash
 );
 
 app.component('font-awesome-icon', FontAwesomeIcon)
