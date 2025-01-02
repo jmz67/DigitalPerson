@@ -179,6 +179,7 @@
     import LoadingSpinner from '../components/LoadingSpinner.vue';
     import Swal from 'sweetalert2'
     import 'sweetalert2/dist/sweetalert2.min.css'
+    import { fetchPatientInfo } from '../api/patient';
 
   
 export default {
@@ -192,9 +193,9 @@ export default {
           { id: 1, sender: 'assistant', text: '你好，请问有什么可以帮助您？' },
         ],
         patient: {
-          name: '张伟',
-          age: 38,
-          department: '皮肤科',
+          name: '',
+          age: '',
+          department: '',
         },
         sid: null,
         conversation_id: null,
@@ -419,135 +420,151 @@ export default {
       },
     },
 
-    mounted() {
-        // 绑定全局函数
-        window.receiveSessionId = (param) => {
-            try {
-            if (typeof param === 'string') {
-                param = JSON.parse(param);
-            }
-            if (param && param.sessionId) {
-                this.sid = param.sessionId;
-                // 原本：alert('数字人已成功打开，Session ID: ' + this.sid);
-                // 改为 SweetAlert2：
-                Swal.fire({
-                    title: '数字人已成功打开',
-                    text: 'Session ID: ' + this.sid,
-                    icon: 'success',
-                    confirmButtonText: '确定',
-                    width: 400, // 直接设置宽度像素值或百分比
-                });
-            } else {
-                console.error('无效的参数，缺少 sessionId');
-                // 原本：alert('无效的参数，缺少 sessionId');
-                Swal.fire({
-                    title: '错误',
-                    text: '无效的参数，缺少 sessionId',
-                    icon: 'error',
-                    confirmButtonText: '确定',
-                    width: 400, // 直接设置宽度像素值或百分比
-                });
-            }
-            } catch (error) {
-            console.error('解析 param 为 JSON 时发生错误:', error);
-            // 原本：alert('解析参数时发生错误');
-            Swal.fire({
-                title: '解析错误',
-                text: '解析参数时发生错误',
-                icon: 'error',
-                confirmButtonText: '确定',
-                width: 400, // 直接设置宽度像素值或百分比
-            });
-            }
-        };
+    async mounted() {
+      // 绑定全局函数
+      window.receiveSessionId = (param) => {
+          try {
+          if (typeof param === 'string') {
+              param = JSON.parse(param);
+          }
+          if (param && param.sessionId) {
+              this.sid = param.sessionId;
+              // 原本：alert('数字人已成功打开，Session ID: ' + this.sid);
+              // 改为 SweetAlert2：
+              Swal.fire({
+                  title: '数字人已成功打开',
+                  text: 'Session ID: ' + this.sid,
+                  icon: 'success',
+                  confirmButtonText: '确定',
+                  width: 400, // 直接设置宽度像素值或百分比
+              });
+          } else {
+              console.error('无效的参数，缺少 sessionId');
+              // 原本：alert('无效的参数，缺少 sessionId');
+              Swal.fire({
+                  title: '错误',
+                  text: '无效的参数，缺少 sessionId',
+                  icon: 'error',
+                  confirmButtonText: '确定',
+                  width: 400, // 直接设置宽度像素值或百分比
+              });
+          }
+          } catch (error) {
+          console.error('解析 param 为 JSON 时发生错误:', error);
+          // 原本：alert('解析参数时发生错误');
+          Swal.fire({
+              title: '解析错误',
+              text: '解析参数时发生错误',
+              icon: 'error',
+              confirmButtonText: '确定',
+              width: 400, // 直接设置宽度像素值或百分比
+          });
+          }
+      };
 
-        window.receiveDigitalPersonBroadcastData = () => {
-            this.showPendingAssistantMessage();
-        };
+      window.receiveDigitalPersonBroadcastData = () => {
+          this.showPendingAssistantMessage();
+      };
 
-        window.receiveDigitalPersonIdentifyData = (param) => {
-            try {
-            if (typeof param === 'string') {
-                param = JSON.parse(param);
-            }
-            if (param && param.identifyText) {
-                // 使用 SweetAlert2 替换原生 alert
-                Swal.fire({
-                    title: '检测到文本',
-                    text: `是否将以下文本插入输入框？\n\n${param.identifyText}`,
-                    icon: 'info',
-                    showCancelButton: true,      // 显示取消按钮
-                    confirmButtonText: '确定',   // 确定按钮文字
-                    cancelButtonText: '取消',    // 取消按钮文字
-                    reverseButtons: true,         // 交换确定、取消按钮的位置（可选）
-                    width: 400, // 直接设置宽度像素值或百分比
-                }).then((result) => {
-                if (result.isConfirmed) {
-                    // 用户点击“确定”时才将文本放入输入框
-                    this.input = param.identifyText;
-                    // 如需可再弹一个提示“插入成功”
-                    // Swal.fire('已插入', '', 'success');
-                } else {
-                    // 用户点击“取消”或关闭弹窗则不做任何处理
-                    console.log('用户取消了插入文本');
-                }
-                });
-            } else {
-                console.error('无效的参数，缺少 identifyText');
-                // 这里也可以用 Swal 弹窗提示
-                Swal.fire({
-                    title: '错误',
-                    text: '无效的参数，缺少 identifyText',
-                    icon: 'error',
-                    confirmButtonText: '确定',
-                    width: 400, // 直接设置宽度像素值或百分比
-                });
-            }
-            } catch (error) {
-            console.error('解析 param 为 JSON 时发生错误:', error);
-            Swal.fire({
-                title: '解析错误',
-                text: '解析参数时发生错误',
-                icon: 'error',
-                confirmButtonText: '确定',
-                width: 400, // 直接设置宽度像素值或百分比
-            });
-            }
-        };
+      window.receiveDigitalPersonIdentifyData = (param) => {
+          try {
+          if (typeof param === 'string') {
+              param = JSON.parse(param);
+          }
+          if (param && param.identifyText) {
+              // 使用 SweetAlert2 替换原生 alert
+              Swal.fire({
+                  title: '检测到文本',
+                  text: `是否将以下文本插入输入框？\n\n${param.identifyText}`,
+                  icon: 'info',
+                  showCancelButton: true,      // 显示取消按钮
+                  confirmButtonText: '确定',   // 确定按钮文字
+                  cancelButtonText: '取消',    // 取消按钮文字
+                  reverseButtons: true,         // 交换确定、取消按钮的位置（可选）
+                  width: 400, // 直接设置宽度像素值或百分比
+              }).then((result) => {
+              if (result.isConfirmed) {
+                  // 用户点击“确定”时才将文本放入输入框
+                  this.input = param.identifyText;
+                  // 如需可再弹一个提示“插入成功”
+                  // Swal.fire('已插入', '', 'success');
+              } else {
+                  // 用户点击“取消”或关闭弹窗则不做任何处理
+                  console.log('用户取消了插入文本');
+              }
+              });
+          } else {
+              console.error('无效的参数，缺少 identifyText');
+              // 这里也可以用 Swal 弹窗提示
+              Swal.fire({
+                  title: '错误',
+                  text: '无效的参数，缺少 identifyText',
+                  icon: 'error',
+                  confirmButtonText: '确定',
+                  width: 400, // 直接设置宽度像素值或百分比
+              });
+          }
+          } catch (error) {
+          console.error('解析 param 为 JSON 时发生错误:', error);
+          Swal.fire({
+              title: '解析错误',
+              text: '解析参数时发生错误',
+              icon: 'error',
+              confirmButtonText: '确定',
+              width: 400, // 直接设置宽度像素值或百分比
+          });
+          }
+      };
 
-        // 调用数字人接口
-        if (window.Android && typeof window.Android.openDigitalPerson === 'function') {
-            const digitalPersonConfig = {
-            digitalperson: {
-                id: '2894645415315454',
-                width: '400',
-                height: '600',
-                x: '0',
-                y: '280',
-            },
-            };
-            try {
-            window.Android.openDigitalPerson(JSON.stringify(digitalPersonConfig));
-            } catch (e) {
-            // 原本：alert(`调用 openDigitalPerson 时发生错误: ${e.message}`);
-            Swal.fire({
-                title: '调用 openDigitalPerson 时发生错误',
-                text: e.message,
-                icon: 'error',
-                confirmButtonText: '确定',
-                width: 400, // 直接设置宽度像素值或百分比
-            });
-            }
-        } else {
-            // 原本：alert('window.Android.openDigitalPerson 方法不可用。');
-            Swal.fire({
-            title: '错误',
-            text: 'window.Android.openDigitalPerson 方法不可用。',
-            icon: 'error',
-            confirmButtonText: '确定',
-            width: 400, // 直接设置宽度像素值或百分比
-            });
-        }
+      // 调用数字人接口
+      if (window.Android && typeof window.Android.openDigitalPerson === 'function') {
+          const digitalPersonConfig = {
+          digitalperson: {
+              id: '2894645415315454',
+              width: '400',
+              height: '600',
+              x: '0',
+              y: '280',
+          },
+          };
+          try {
+          window.Android.openDigitalPerson(JSON.stringify(digitalPersonConfig));
+          } catch (e) {
+          // 原本：alert(`调用 openDigitalPerson 时发生错误: ${e.message}`);
+          Swal.fire({
+              title: '调用 openDigitalPerson 时发生错误',
+              text: e.message,
+              icon: 'error',
+              confirmButtonText: '确定',
+              width: 400, // 直接设置宽度像素值或百分比
+          });
+          }
+      } else {
+          // 原本：alert('window.Android.openDigitalPerson 方法不可用。');
+          Swal.fire({
+          title: '错误',
+          text: 'window.Android.openDigitalPerson 方法不可用。',
+          icon: 'error',
+          confirmButtonText: '确定',
+          width: 400, // 直接设置宽度像素值或百分比
+          });
+      };
+
+      // 获取患者信息
+      try {
+          const patientData = await fetchPatientInfo();
+          this.patient = patientData;
+      } catch (error) {
+        Swal.fire({
+          title: '加载失败',
+          text: '获取患者信息时出现问题，请稍后重试。',
+          icon: 'error',
+          confirmButtonText: '确定',
+          width: 400,
+        });
+      }
+
+
     },
 
     

@@ -1,0 +1,15 @@
+import axios from 'axios';
+
+/**
+ * 获取患者基本信息
+ * @returns {Promise<Object>} 患者信息对象
+ */
+export async function fetchPatientInfo() {
+    try {
+      const response = await axios.get('/api/patientInfo');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching patient info:', error);
+      throw error;
+    }
+}
