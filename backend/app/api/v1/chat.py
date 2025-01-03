@@ -9,9 +9,9 @@ import logging
 from app.services.chat_service import ChatService
 from app.config import Config
 
-logger = logging.getLogger("app.api.chat")
+logger = logging.getLogger("app.api.chat_v1")
 
-router = APIRouter()
+router = APIRouter(prefix="/v1")
 
 # 定义请求体的数据结构
 class ChatMessageRequest(BaseModel):

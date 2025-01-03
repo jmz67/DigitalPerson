@@ -3,7 +3,8 @@ import logging
 
 from app.logging_config import setup_logging
 from app.config import Config
-from app.api.chat import router as chat_router
+from app.api.v1.chat import router as chat_v1_router
+from app.api.v2.chat import router as chat_v2_router
 from app.services.chat_service import ChatService
 
 app = FastAPI(title="Chat API")
@@ -30,7 +31,8 @@ async def shutdown_event(chat_service: ChatService = Depends(get_chat_service_in
     await chat_service.client.aclose()
 
 # 包含路由
-app.include_router(chat_router)
+app.include_router(chat_v1_router)
+app.include_router(chat_v2_router)
 
 if __name__ == "__main__":
     import uvicorn
