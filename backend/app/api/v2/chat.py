@@ -12,7 +12,7 @@ from app.config import Config
 
 logger = logging.getLogger("app.api.chat_v2")
 
-router = APIRouter(prefix="/v2")  # 假设这是你新接口的版本前缀
+router = APIRouter(prefix="/v2")
 
 class ChatMessageRequest(BaseModel):
     message: str
