@@ -174,10 +174,10 @@
 
 <script>
 import {
-  createConversation,
-  saveMessage,
-  sendChatMessage,
-  getChatHistory,
+    createConversation,
+    saveMessage,
+    sendChatMessage,
+    getChatHistory,
 } from '../api/chat'; // 导入 chat.js 中的 API 函数
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import Swal from 'sweetalert2';

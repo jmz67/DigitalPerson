@@ -16,7 +16,7 @@ class Patient(PatientBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ConversationBase(BaseModel):
     patient_id: int
@@ -31,7 +31,7 @@ class Conversation(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class MessageBase(BaseModel):
     conversation_id: str
@@ -46,7 +46,7 @@ class Message(MessageBase):
     timestamp: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ChatHistory(BaseModel):
     conversation_id: int

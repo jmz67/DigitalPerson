@@ -24,15 +24,15 @@
     <div class="sidebar-content">
         <div class="sidebar-logo">
             <div v-if="!isCollapsed" class="logo-content">
-                <!-- 替换为你的 LOGO -->
-                <div>Logo</div>
+                <!-- 使用自定义 Logo 组件 -->
+                <Logo iconSizeClass="w-10 h-10" textSizeClass="text-2xl" textSpacingClass="tracking-wide" />
             </div>
             <div v-else class="logo-placeholder">
                 <!-- 可选：收起时的 Logo 缩略图或保持空白 -->
                 <div></div>
             </div>
         </div>
-
+        <!-- TODO: 宽度太短，不够响应式 -->
         <router-link to="/" class="sidebar-item">   
             <font-awesome-icon icon="fa-solid fa-house" class="sidebar-icon" />
             <span class="sidebar-text">问诊系统首页</span>
@@ -94,9 +94,13 @@ import { useAuthStore } from '../store/index.js';
 import { useRouter } from 'vue-router';
 import { ref, onMounted, computed } from 'vue';
 import api from '../api/auth.js';
+import Logo from '../components/Logo.vue';
 
 export default {
   name: 'Dashboard',
+  components: {
+    Logo,  
+  },
   setup() {
     const authStore = useAuthStore();
     const router = useRouter();
@@ -109,7 +113,7 @@ export default {
 
     // 控制侧边栏展开时的自由宽度
     const sidebarExpandedWidth = ref(280); // 默认展开时 280px
-    const minWidth = 140;
+    const minWidth = 280;
     const maxWidth = 600;
 
     // 拖拽中标志
@@ -145,7 +149,7 @@ export default {
         sidebarExpandedWidth.value = 60; // 收起时宽度
       } else {
         // 展开时恢复之前的宽度
-        sidebarExpandedWidth.value = savedWidth.value || 280;
+        sidebarExpandedWidth.value = savedWidth.value || 380;
       }
     };
 
@@ -212,14 +216,6 @@ export default {
 
 
 <style scoped>
-/* 
-* 关键思路：
-* 1) 用 isCollapsed + sidebarExpandedWidth 实现 收起(60px)/展开(自定义宽度) 
-* 2) 当 !isCollapsed 时，可拖拽 .resize-handle 改变 sidebarExpandedWidth
-* 3) 拖拽时 isResizing=true -> transition: none，保证拖拽顺畅
-* 4) 收起/展开时的动画用 transition: width 0.3s
-* 5) 固定 .sidebar-item 的高度 & line-height，避免视觉跳动
-*/
 
 /* 基础 */
 html, body {
@@ -250,6 +246,9 @@ html, body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* 左对齐 */
 }
 
 /* 收起时 80px 宽 */
@@ -293,19 +292,28 @@ html, body {
   flex: 1; /* 确保内容区域填满侧边栏 */
 }
 
-
-/* LOGO 示例 */
+/* 侧边栏 Logo 样式 */
 .sidebar-logo {
   text-align: center;
-  height: 60px; /* 固定高度，确保布局一致 */
+  height: 60px;
   margin-bottom: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden; /* 避免 logo 边缘超出 */
+}
+
+.logo-content {
+  display: flex;
+  align-items: center;
+  padding-left: 1rem; /* 根据需要调整 */
+  white-space: nowrap; /* 避免文字溢出 */
+  overflow: hidden; /* 避免文字溢出 */
+  text-overflow: ellipsis; /* 添加省略号 */
 }
 
 .logo-content, .logo-placeholder {
-  transition: opacity 0.3s;
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
 }
 
 .logo-placeholder {
@@ -313,15 +321,18 @@ html, body {
   font-size: 1.2rem;
   font-weight: bold;
   color: #333;
-  opacity: 0; /* 初始隐藏 */
+  opacity: 0;
+  transform: scale(0.5); /* 让收起时的 logo 缩小 */
 }
 
 .dashboard-container.sidebar-collapsed .logo-content {
   opacity: 0;
+  transform: scale(0.5); /* 收起时 logo 缩小 */
 }
 
 .dashboard-container.sidebar-collapsed .logo-placeholder {
   opacity: 1;
+  transform: scale(1); /* 展开时恢复正常大小 */
 }
 
 /* 导航项：固定高度48px，避免收起/展开时的高度跳动 */
@@ -329,6 +340,7 @@ html, body {
   display: flex;
   align-items: center;
   height: 48px;
+  width: 100%;
   line-height: 48px;
   white-space: nowrap;
   overflow: hidden;

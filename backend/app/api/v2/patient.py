@@ -23,7 +23,7 @@ def generate_dynamic_patient_info():
         "age": 30,
         "department": "内科",
         # "conversation_id": datetime.now().strftime("%Y%m%d%H%M%S%f")[:-3],  # 使用当前时间戳作为 conversation_id
-        "conversation_id": None,  # 使用当前时间戳作为 conversation_id
+        "conversation_id": None,  
         "timestamp": datetime.now().isoformat()  # 添加请求的时间戳
     }
 
