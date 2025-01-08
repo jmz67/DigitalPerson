@@ -1,7 +1,7 @@
-// src/axios.js
+// src/auth.js
 import axios from 'axios';
-import { useAuthStore } from './store';
-import router from './router';
+import { useAuthStore } from '../store';
+import router from '../router';
 
 const api = axios.create({
   baseURL: 'http://127.0.0.1:5000/v2/auth',

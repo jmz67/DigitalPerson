@@ -5,7 +5,7 @@ from contextlib import contextmanager
 import os
 
 # 使用环境变量加载数据库URL
-DATABASE_URL = "mysql+mysqlconnector://test:test@47.99.172.64:26999/digitalPerson"
+DATABASE_URL = "mysql+mysqlconnector://test:test@47.99.172.64:26999/wzSystem"
 
 engine = create_engine(DATABASE_URL)
 

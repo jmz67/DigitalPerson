@@ -36,6 +36,16 @@ async def chat_message_v2(
     拿到结果后，再进行定制化的结构化处理，返回给前端。
     """
     logger.info("Received chat message request (v2)")
+
+    # response_data = {
+    #         "doctor_question": "doctor_question",
+    #         "chat_type": "chat",
+    #         "recommendation_texts": ["recommendation_text1", "recommendation_text2"],
+    #         "conversation_id": 88888888,
+    #     }
+
+    # return response_data
+    
     try:
         # 1. 组织请求体数据（外部接口需要的格式）
         post_data = {
@@ -59,6 +69,8 @@ async def chat_message_v2(
             raise HTTPException(status_code=resp.status_code, detail=f"外部接口错误: {resp.text}")
 
         result = resp.json()
+
+        logger.info(f"大模型接口返回结果: {result}")
 
         """
         预期返回值示例（简化）:
@@ -104,3 +116,47 @@ async def chat_message_v2(
     except Exception as e:
         logger.error(f"Error in chat_message_v2: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+from sqlalchemy.orm import Session
+from fastapi import HTTPException, Depends, APIRouter
+from app.models.chat_models import Conversation as ModelConversation, Message as ModelMessage  # 直接导入模型类
+from app.schemas.chat_schemas import Conversation, ConversationCreate, Message, MessageCreate, ChatHistory  # 直接导入 Pydantic 模型
+from app.services.chat_history import create_conversation, create_message, get_patient, get_conversation, get_chat_history  # 直接导入服务函数
+from app.database import SessionLocal
+
+# 依赖项，获取数据库会话
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@router.post("/createConversation", response_model=Conversation)
+def createConversation(conversation: ConversationCreate, db: Session = Depends(get_db)):
+    # # 可选：验证患者是否存在
+    # patient = get_patient(db, conversation.patient_id)
+    # if not patient:
+    #     logger.error(f"Patient not found: {conversation.patient_id}")
+    #     raise HTTPException(status_code=404, detail="Patient not found")
+    return create_conversation(db, conversation)
+
+@router.post("/saveMessage", response_model=Message)
+def save_message(message: MessageCreate, db: Session = Depends(get_db)):
+    # 验证 conversation_id 是否存在
+    conversation = get_conversation(db, message.conversation_id)
+    if not conversation:
+        logger.error(f"Conversation not found: {message.conversation_id}")
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    if message.sender not in ['user', 'assistant']:
+        raise HTTPException(status_code=400, detail="Invalid sender")
+    return create_message(db, message)
+
+@router.get("/chatHistory/{conversation_id}", response_model=ChatHistory)
+def get_chat_history(conversation_id: int, db: Session = Depends(get_db)):
+    conversation = get_conversation(db, conversation_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    messages = get_chat_history(db, conversation_id)
+    return ChatHistory(conversation_id=conversation_id, messages=messages)
+

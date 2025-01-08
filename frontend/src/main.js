@@ -7,14 +7,20 @@ import { createPinia } from 'pinia';
 // Font Awesome Imports
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { faPaperPlane, faMicrophone, faMicrophoneSlash } from '@fortawesome/free-solid-svg-icons';
+import { faPaperPlane, faMicrophone, faMicrophoneSlash, faChevronRight, faChevronLeft, faChartBar, faComments, faVial, faHouse } from '@fortawesome/free-solid-svg-icons';
 
 const app = createApp(App)
 
 library.add(
     faPaperPlane,
     faMicrophone,
-    faMicrophoneSlash
+    faMicrophoneSlash,
+    faChevronRight,
+    faChevronLeft,
+    faChartBar,
+    faComments,
+    faVial,
+    faHouse
 );
 
 app.component('font-awesome-icon', FontAwesomeIcon)

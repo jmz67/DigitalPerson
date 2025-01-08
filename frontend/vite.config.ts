@@ -14,7 +14,7 @@ export default defineConfig({
     proxy: {
         // '/api' 可以理解为 请求目标地址的标识符，也可以使用其他命名代替
         "/api": {
-            target: "http://127.0.0.1:5000/v1",
+            target: "http://127.0.0.1:5000/v2",
             changeOrigin: true, //是否跨域
             ws: true, //是否代理 websockets
             secure: false, //是否https接口

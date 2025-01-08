@@ -1,21 +1,39 @@
-
 <template>
 <div class="auth-container">
-    <h2>注册</h2>
-    <form @submit.prevent="handleRegister">
+    <div class="auth-header">
+    <div class="mb-2">logo</div>
+    <h2>数字人预问诊系统</h2>
+    <p>注册一个账户以开始数字人问诊体验</p>
+    </div>
+    <form @submit.prevent="handleRegister" class="auth-form">
     <div class="form-group">
-        <label for="username">用户名：</label>
-        <input v-model="username" id="username" type="text" required />
+        <input
+        v-model="username"
+        id="username"
+        type="text"
+        placeholder="用户名"
+        required
+        />
     </div>
     <div class="form-group">
-        <label for="password">密码：</label>
-        <input v-model="password" id="password" type="password" required />
+        <input
+        v-model="password"
+        id="password"
+        type="password"
+        placeholder="密码"
+        required
+        />
     </div>
-    <button type="submit">注册</button>
+    <button type="submit" class="btn-login">注册</button>
     </form>
-    <p>
-    已有账号？
-    <router-link to="/login">登录</router-link>
+    <p class="sign-up-text">
+    已有账户？
+    <router-link
+        to="/login"
+        class="text-blue-500 hover:text-blue-700 font-medium"
+    >
+        登录
+    </router-link>
     </p>
     <div v-if="errorMessage" class="error-message">
     {{ errorMessage }}
@@ -27,34 +45,34 @@
 </template>
 
 <script>
-import api from '../axios';
+import api from "../api/auth";
 
 export default {
-name: 'Register',
+name: "Register",
 data() {
     return {
-    username: '',
-    password: '',
-    errorMessage: '',
-    successMessage: '',
+    username: "",
+    password: "",
+    errorMessage: "",
+    successMessage: "",
     };
 },
 methods: {
     async handleRegister() {
-    this.errorMessage = '';
-    this.successMessage = '';
+    this.errorMessage = "";
+    this.successMessage = "";
     try {
-        await api.post('/register', {
+        await api.post("/register", {
         username: this.username,
         password: this.password,
         });
-        this.successMessage = '注册成功！请登录。';
-        // 延迟几秒后跳转，或立即跳转
+        this.successMessage = "注册成功！请登录。";
         setTimeout(() => {
-        this.$router.push('/login');
+        this.$router.push("/login");
         }, 1500);
     } catch (error) {
-        this.errorMessage = error.response?.data?.detail || '注册失败，请重试。';
+        this.errorMessage =
+        error.response?.data?.detail || "注册失败，请重试。";
     }
     },
 },
@@ -62,64 +80,116 @@ methods: {
 </script>
 
 <style scoped>
-/* 与 Login.vue 相同的样式 */
-.auth-container {
-max-width: 400px;
-margin: 100px auto;
-padding: 20px;
-background: #ffffff;
-border-radius: 8px;
-box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+/* 背景整体样式 */
+body {
+background-color: #f9f9fc;
+font-family: "Inter", sans-serif;
 }
 
-.auth-container h2 {
+/* 登录/注册容器样式 */
+.auth-container {
+max-width: 360px; /* 宽度和登录框完全一致 */
+margin: 120px auto; /* 保持登录框上下居中 */
+padding: 20px;
+background: #ffffff;
+border-radius: 12px;
+box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 text-align: center;
+}
+
+/* Header 样式 */
+.auth-header {
 margin-bottom: 20px;
 }
 
-.auth-container form .form-group {
+.auth-header .logo {
+width: 60px;
+margin-bottom: 10px;
+}
+
+.auth-header h2 {
+font-size: 24px;
+font-weight: 600;
+margin-bottom: 8px;
+}
+
+.auth-header p {
+font-size: 14px;
+color: #666;
+}
+
+/* 表单样式 */
+.auth-form {
+text-align: left;
+}
+
+.auth-form .form-group {
 margin-bottom: 15px;
 }
 
-.auth-container label {
-display: block;
-margin-bottom: 5px;
-}
-
-.auth-container input {
+.auth-form input {
 width: 100%;
-padding: 8px;
+padding: 10px;
+border: 1px solid #ddd;
+border-radius: 6px;
+font-size: 14px;
 box-sizing: border-box;
 }
 
-.auth-container button {
+.auth-form input:focus {
+outline: none;
+border-color: #007bff;
+box-shadow: 0 0 4px rgba(0, 123, 255, 0.4);
+}
+
+/* 按钮样式 */
+.btn-login {
 width: 100%;
-padding: 10px;
-background-color: #28a745;
+padding: 12px;
+background-color: #007bff;
 border: none;
-color: #fff;
-border-radius: 4px;
+color: white;
+font-size: 16px;
+font-weight: bold;
+border-radius: 6px;
 cursor: pointer;
+transition: background-color 0.3s ease;
 }
 
-.auth-container button:hover {
-background-color: #218838;
+.btn-login:hover {
+background-color: #0056b3;
 }
 
-.auth-container p {
-text-align: center;
-margin-top: 10px;
+/* 链接样式 */
+.forgot-password {
+font-size: 12px;
+color: #007bff;
+text-decoration: none;
 }
 
+.forgot-password:hover {
+text-decoration: underline;
+}
+
+/* 注册文本样式 */
+.sign-up-text {
+margin-top: 15px;
+font-size: 14px;
+color: #666;
+}
+
+/* 错误和成功消息样式 */
 .error-message {
 margin-top: 15px;
 color: #ff4d4f;
+font-size: 14px;
 text-align: center;
 }
 
 .success-message {
 margin-top: 15px;
 color: #28a745;
+font-size: 14px;
 text-align: center;
 }
 </style>

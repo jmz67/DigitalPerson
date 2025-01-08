@@ -6,7 +6,7 @@ import axios from 'axios';
  */
 export async function fetchPatientInfo() {
     try {
-      const response = await axios.get('/api/patientInfo');
+      const response = await axios.get('http://127.0.0.1:5000/v2/patientInfo');
       return response.data;
     } catch (error) {
       console.error('Error fetching patient info:', error);

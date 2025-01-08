@@ -11,7 +11,7 @@
             <div class="header-right">
                 <div class="date-time">{{ currentDateTime }}</div>
                 <router-link to="/dashboard" class="admin-info">{{ user.username }}</router-link>
-                <button @click="logout" class="logout-btn">退出</button>
+                <button @click="exitToHome" class="logout-btn">退出</button>
             </div>
         </header>
 
@@ -162,10 +162,8 @@ export default {
             }, 60000); // 每分钟更新一次
         };
 
-        // 退出登录
-        const logout = () => {
-            authStore.logout();
-            router.push('/login');
+        const exitToHome = () => {
+            router.push('/');
         };
 
         // 打印功能
@@ -182,7 +180,7 @@ export default {
             currentDateTime,
             filteredReportSections,
             user,
-            logout,
+            exitToHome,
             print
         };
     }

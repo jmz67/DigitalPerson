@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.chat import router as chat_v1_router
 from app.api.v2.chat import router as chat_v2_router
 from app.api.v2.auth import router as auth_router
+from app.api.v2.patient import router as patient_router
 from app.services.chat_service import ChatService
 
 app = FastAPI(title="Chat API")
@@ -50,6 +51,7 @@ async def shutdown_event(chat_service: ChatService = Depends(get_chat_service_in
 app.include_router(chat_v1_router)
 app.include_router(chat_v2_router)
 app.include_router(auth_router)
+app.include_router(patient_router)
 
 if __name__ == "__main__":
     import uvicorn
