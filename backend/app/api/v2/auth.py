@@ -14,9 +14,6 @@ from app.dependencies import get_db, get_current_user
 # 加载环境变量
 load_dotenv()
 
-# 创建所有表
-Base.metadata.create_all(bind=engine)
-
 router = APIRouter(prefix="/v2/auth")
 
 @router.post("/register", response_model=UserResponse)
