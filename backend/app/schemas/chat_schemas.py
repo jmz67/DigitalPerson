@@ -13,16 +13,16 @@ class PatientCreate(PatientBase):
     pass
 
 class Patient(PatientBase):
-    id: int
+    id: Optional[int] = None
 
     class Config:
         from_attributes = True
 
 class ConversationBase(BaseModel):
-    patient_id: int
+    patient_id: Optional[int] = None
 
 class ConversationCreate(ConversationBase):
-    conversation_id: str
+    conversation_id: Optional[str] = None
     pass
 
 class Conversation(BaseModel):

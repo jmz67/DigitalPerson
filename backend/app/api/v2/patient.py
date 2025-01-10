@@ -18,7 +18,12 @@ def get_db():
 
 @router.get("/patientInfo")
 def get_patient_info():
-    ...
+    return {
+        "id": 1234562,
+        "name": "王安宇",
+        "age": 39,
+        "department": "皮肤科"    
+    }
 
 @router.get("/patientDetail/{opc_id}", response_model=schemas.ResponseModel)
 def get_patient_data(opc_id: str, db: Session = Depends(get_db)):

@@ -261,7 +261,14 @@ export default {
               if (data.conversation_id) {
                 console.log('更新 conversation_id:', data.conversation_id);
                 this.conversation_id = data.conversation_id;
-                await createConversation(this.patient.id, this.conversation_id);
+                console.log("this.patient.id:", this.patient.id)
+                if (this.patient.id) {
+                  await createConversation(this.patient.id, this.conversation_id);
+                } else {
+                  console.log("患者 id 为空，无法创建会话，this.patient.id:", this.patient.id)
+                  console.log('未获取到患者信息，无法创建会话');
+                }
+                // await createConversation(1234555, this.conversation_id);
               }
 
               // 如果 chat_type 为 end，则关闭数字人并返回主页
@@ -297,6 +304,8 @@ export default {
               });
               await saveMessage(this.conversation_id, 'user', userMessage.text);
               // await saveMessage(this.conversation_id, 'loading', loadingMessage.text);
+
+              window.receiveDigitalPersonBroadcastData();
         } catch (error) {
           console.error('Error:', error);
           const errorMessage = {
