@@ -13,3 +13,13 @@ export async function fetchPatientInfo() {
       throw error;
     }
 }
+
+export async function fetchPatientDetail(opcId) {
+  try {
+    const response = await axios.get(`http://127.0.0.1:5000/v2/patientDetail/${opcId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching patient detail:', error);
+    throw error;
+  }
+}

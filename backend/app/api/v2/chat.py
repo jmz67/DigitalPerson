@@ -62,6 +62,8 @@ async def chat_message_v2(
         headers = {
             "Authorization": "Bearer app-ZpkC6eatzXmILEJocQDqQWye"
         }
+
+        logger.info(f"调用大模型接口: {url}, post_data: {post_data}")
         
         resp = requests.post(url, json=post_data, headers=headers, timeout=15)
         if resp.status_code != 200:
@@ -84,24 +86,38 @@ async def chat_message_v2(
         """
 
         # 3. 从 result 中解析出 doctor_question, recommendation_texts, conversation_id 等
-        # 解析 answer 字段
-        answer_text = result.get("answer", "")
+        # 获取 answer 字段
+        answer_text = result.get("answer", "").strip()
 
         # 提取 doctor_question
-        doctor_question_match = re.search(r"问题：(.*?)(?=\n推荐回答：)", answer_text)
-        doctor_question = doctor_question_match.group(1).strip() if doctor_question_match else ""
+        doctor_question = ""
+        doctor_question_match = re.search(r"问题：(.*?)(?=\n推荐回答：|\Z)", answer_text, re.S)
+        if doctor_question_match:
+            doctor_question = doctor_question_match.group(1).strip()
 
         # 提取 recommendation_texts
-        recommendation_texts_match = re.search(r"推荐回答：(.*?)(?=\n|$)", answer_text)
-        recommendation_texts_raw = recommendation_texts_match.group(1).strip() if recommendation_texts_match else ""
-        recommendation_texts = re.findall(r"\d+\.\s*([^0-9]+)", recommendation_texts_raw)
+        recommendation_texts = []
+        recommendation_texts_match = re.search(r"推荐回答：(.*?)(?=\n|$)", answer_text, re.S)
+        if recommendation_texts_match:
+            recommendation_texts_raw = recommendation_texts_match.group(1).strip()
+            recommendation_texts = re.findall(r"\d+\.\s*([^0-9]+)", recommendation_texts_raw)
 
         # 提取 chat_type
+        chat_type = "unknown"
         chat_type_match = re.search(r"chat_type:\s*(\w+)", answer_text)
-        chat_type = chat_type_match.group(1).strip() if chat_type_match else "unknown"
+        if chat_type_match:
+            chat_type = chat_type_match.group(1).strip()
 
         # 提取 conversation_id
         conversation_id = result.get("conversation_id", "")
+
+        # 打印解析结果
+        logger.info(
+            f"解析结果: doctor_question={doctor_question}, "
+            f"recommendation_texts={recommendation_texts}, "
+            f"chat_type={chat_type}, "
+            f"conversation_id={conversation_id}"
+        )
 
         # 构造最终的 response_data
         response_data = {
@@ -159,4 +175,3 @@ def get_chat_history(conversation_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Conversation not found")
     messages = get_chat_history(db, conversation_id)
     return ChatHistory(conversation_id=conversation_id, messages=messages)
-

@@ -182,13 +182,16 @@ import {
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
-import { fetchPatientInfo } from '../api/patient'; // 假设您已有的 API 调用
+import { fetchPatientInfo, fetchPatientDetail } from '../api/patient'; // 导入新的 API 调用
 import { useAuthStore } from '../store'; // 引入认证 store
+import { useReportStore } from '../store/report'; // 引入报告 store
+import axios from 'axios'; // 确保 axios 被导入
 
 export default {
   components: {
     LoadingSpinner,
   },
+ 
   data() {
     return {
       input: '',
@@ -213,16 +216,21 @@ export default {
 
       // 是否开启麦克风
       microphoneOpen: false,
+      patientDetail: null, // 存储患者详细信息
     };
   },
   methods: {
     /**
-     * 发送消息到后端
+     * 发送用户消息到后端
+     * @param {Object|null} messageInput - 可选的消息输入，如果提供，将作为消息内容发送
      */
-    async sendMessage() {
-      if (this.input.trim()) {
+    async sendMessage(messageInput = null) {
+
+      const inputText = this.input;
+
+      if (inputText.trim()) {
         const timestamp = Date.now();
-        const userMessage = { id: timestamp, sender: 'user', text: this.input };
+        const userMessage = { id: timestamp, sender: 'user', text: inputText };
         this.messages.push(userMessage);
         this.smoothScrollToBottom();
 
@@ -230,8 +238,8 @@ export default {
         this.displayedRecommendations = [];
         this.lastAssistantMessageIndex = null;
 
-        const userInput = this.input;
         this.input = '';
+
         const loadingMessage = { id: timestamp + 1, sender: 'loading', text: '' };
         this.messages.push(loadingMessage);
         this.smoothScrollToBottom();
@@ -239,14 +247,14 @@ export default {
         try {
               // 打印即将发送的消息内容
               console.log('即将发送的消息:', {
-                  content: userInput,
+                  content: inputText,
                   conversation_id: this.conversation_id,
                   sid: this.sid
               });
 
               // 发送聊天消息并获取助手回复
               const response = await sendChatMessage(
-                  userInput,
+                  inputText,
                   this.conversation_id,
                   this.sid,
               );
@@ -257,31 +265,33 @@ export default {
 
               console.log('response.data:', response.data);
 
-              // 如果需要更新 conversation_id
-              if (data.conversation_id) {
-                console.log('更新 conversation_id:', data.conversation_id);
-                this.conversation_id = data.conversation_id;
-                console.log("this.patient.id:", this.patient.id)
-                if (this.patient.id) {
-                  await createConversation(this.patient.id, this.conversation_id);
-                } else {
-                  console.log("患者 id 为空，无法创建会话，this.patient.id:", this.patient.id)
-                  console.log('未获取到患者信息，无法创建会话');
-                }
-                // await createConversation(1234555, this.conversation_id);
-              }
+              // // 如果需要更新 conversation_id
+              // if (data.conversation_id) {
+              //   console.log('更新 conversation_id:', data.conversation_id);
+              //   this.conversation_id = data.conversation_id;
+              //   console.log("this.patient.id:", this.patient.id)
+              //   if (this.patient.id) {
+              //     await createConversation(this.patient.id, this.conversation_id);
+              //   } else {
+              //     console.log("患者 id 为空，无法创建会话，this.patient.id:", this.patient.id)
+              //     console.log('未获取到患者信息，无法创建会话');
+              //   }
+              // }
 
               // 如果 chat_type 为 end，则关闭数字人并返回主页
               if (data.chat_type === 'end') {
-                if (
-                  window.Android &&
-                  typeof window.Android.closeDigitalPerson === 'function'
-                ) {
-                  window.Android.closeDigitalPerson();
-                }
-                this.$router.push('/');
-                return;
+                  const reportStore = useReportStore(); // 获取报告 store 实例
+                  reportStore.setReportData(this.patient, this.patientDetail, data.doctor_question); // 设置报告数据
+
+                  if (
+                    window.Android && typeof window.Android.closeDigitalPerson === 'function'
+                  ) {                  
+                    window.Android.closeDigitalPerson();                
+                  }               
+                  this.$router.push('/report'); // 导航到报告页面
+                  return;              
               }
+
 
               // 缓存后端返回的数据，等待 App 调用再显示
               this.pendingAssistantMessage = {
@@ -315,6 +325,114 @@ export default {
           };
           const loadingIndex = this.messages.findIndex(
             (msg) => msg.id === timestamp + 1
+          );
+          if (loadingIndex !== -1) {
+            this.messages.splice(loadingIndex, 1, errorMessage);
+          }
+          this.smoothScrollToBottom();
+        }
+      }
+
+    },
+
+    /**
+     * 格式化初始发送的患者详细信息
+     * @param {Object} messageInput - 患者详细信息对象
+     * @returns {string} - JSON 字符串
+     */
+    formatInitialMessage(messageInput) {
+      // 根据需要格式化患者详细信息
+      return JSON.stringify(messageInput);
+    },
+
+    /**
+     * 发送初始数据（患者详细信息）到后端以获取欢迎词
+     */
+    async sendInitialData() {
+      if (!this.patientDetail) return;
+
+      const inputText = this.formatInitialMessage(this.patientDetail);
+
+      if (inputText.trim()) {
+        const timestamp = Date.now();
+        const loadingMessage = { id: timestamp, sender: 'loading', text: '' };
+        this.messages.push(loadingMessage);
+        this.smoothScrollToBottom();
+
+        try {
+              // 打印即将发送的初始消息内容
+              console.log('即将发送的初始消息:', {
+                  content: inputText,
+                  conversation_id: this.conversation_id,
+                  sid: this.sid
+              });
+
+              // 发送初始消息并获取助手回复
+              const response = await sendChatMessage(
+                  inputText,
+                  this.conversation_id,
+                  this.sid,
+              );
+
+              console.log('response:', response);
+
+              const data = response.data;
+
+              console.log('response.data:', response.data);
+
+              // 如果需要更新 conversation_id
+              if (data.conversation_id) {
+                console.log('更新 conversation_id:', data.conversation_id);
+                this.conversation_id = data.conversation_id;
+                console.log("this.patient.id:", this.patient.id)
+                if (this.patient.id) {
+                  console.log("创建会话中，发送的数据：")
+                  console.log("this.patient.id:", this.patient.id)
+                  console.log("this.conversation_id:", this.conversation_id)
+                  await createConversation(this.patient.id, this.conversation_id);
+                } else {
+                  console.log("患者 id 为空，无法创建会话，this.patient.id:", this.patient.id)
+                  console.log('未获取到患者信息，无法创建会话');
+                }
+              }
+
+              // 如果 chat_type 为 end，则关闭数字人并返回主页
+              if (data.chat_type === 'end') {
+                if (
+                  window.Android &&
+                  typeof window.Android.closeDigitalPerson === 'function'
+                ) {
+                  window.Android.closeDigitalPerson();
+                }
+                this.$router.push('/');
+                return;
+              }
+
+              // 缓存后端返回的数据，等待 App 调用再显示
+              this.pendingAssistantMessage = {
+                id: timestamp + 1,
+                sender: 'assistant',
+                text: data.doctor_question,
+              };
+              this.pendingRecommendations = data.recommendation_texts || [];
+
+              console.log('pendingAssistantMessage:', this.pendingAssistantMessage);
+              console.log('pendingRecommendations:', this.pendingRecommendations);
+
+              this.smoothScrollToBottom();
+
+              // 不保存初始消息到后端
+              // window.receiveDigitalPersonBroadcastData();
+              window.receiveDigitalPersonBroadcastData();
+        } catch (error) {
+          console.error('Error:', error);
+          const errorMessage = {
+            id: timestamp + 2,
+            sender: 'assistant',
+            text: '抱歉，发生了错误。请稍后再试。',
+          };
+          const loadingIndex = this.messages.findIndex(
+            (msg) => msg.id === timestamp
           );
           if (loadingIndex !== -1) {
             this.messages.splice(loadingIndex, 1, errorMessage);
@@ -490,7 +608,9 @@ export default {
   },
 
   async mounted() {
+    
     const authStore = useAuthStore(); // 引入认证 store
+    const reportStore = useReportStore(); // 引入报告 store
 
     // 绑定全局函数
     window.receiveSessionId = (param) => {
@@ -554,7 +674,7 @@ export default {
             if (result.isConfirmed) {
               // 用户点击“确定”时才将文本放入输入框
               this.input = param.identifyText;
-              // 如需可再弹一个提示“插入成功”
+              // 如需可再弹一个提示“已插入”
               // Swal.fire('已插入', '', 'success');
             } else {
               // 用户点击“取消”或关闭弹窗则不做任何处理
@@ -635,6 +755,32 @@ export default {
       });
     }
 
+    // 获取患者详细信息并发送欢迎词
+    try {
+      const opcId = 'OPC004'; // 硬编码 OPCID 为 'OPC004'
+      const patientDetailResponse = await fetchPatientDetail(opcId);
+      if (patientDetailResponse.code === 200) {
+        this.patientDetail = patientDetailResponse.data;
+        // 将 patientDetail 中的部分数据映射到 this.patient，如果需要
+        // this.patient.id = this.patientDetail.patientIdentity.patientId;
+        // this.patient.name = this.patientDetail.patientIdentity.idNumber; // 根据实际字段
+        // 其他字段根据需要设置
+
+        // 发送 patientDetail 数据作为初始消息以获取欢迎词
+        await this.sendInitialData();
+      } else {
+        throw new Error(patientDetailResponse.message || '获取患者详细信息失败');
+      }
+    } catch (error) {
+      Swal.fire({
+        title: '加载失败',
+        text: `获取患者详细信息时出现问题，请稍后重试。错误信息: ${error.message}`,
+        icon: 'error',
+        confirmButtonText: '确定',
+        width: 400,
+      });
+    }
+
     // 如果 conversation_id 已存在（例如通过 URL 参数传递），加载聊天历史
     if (this.conversation_id) {
       this.loadChatHistory();
@@ -649,6 +795,8 @@ export default {
   },
 };
 </script>
+
+
   
 <style scoped>
   /* Page fade-in animation */

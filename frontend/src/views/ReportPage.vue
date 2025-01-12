@@ -1,191 +1,245 @@
 <template>
-    <div class="medical-record">
-        <!-- 页首固定 -->
-        <header class="header">
-            <div>
-                logo
-            </div>
-            <div class="header-center">
-                <div class="title">白泽晓大模型</div>
-            </div>
-            <div class="header-right">
-                <div class="date-time">{{ currentDateTime }}</div>
-                <router-link to="/dashboard" class="admin-info">{{ user.username }}</router-link>
-                <button @click="exitToHome" class="logout-btn">退出</button>
-            </div>
-        </header>
-
-        <!-- 滚动区域 -->
-        <div class="content">
-            <section 
-                v-for="section in filteredReportSections" 
-                :key="section.id" 
-                :class="['report-section', section.layout === 'horizontal' ? 'horizontal-layout' : 'vertical-layout']"
-            >
-                <h2 class="section-title">{{ section.title }}</h2>
-                <div class="info-container">
-                    <p v-for="(item, index) in section.fields" :key="index">
-                        <strong>{{ item.label }}：</strong>{{ item.value }}
-                    </p>
-                </div>
-            </section>
-        </div>
-
-        <!-- 打印按钮固定在右下角 -->
-        <div class="actions">
-            <button @click="print">打印</button>
-        </div>
+<div class="medical-record">
+    <!-- 页首固定 -->
+    <header class="header">
+    <div>
+        logo
     </div>
+    <div class="header-center">
+        <div class="title">白泽晓大模型</div>
+    </div>
+    <div class="header-right">
+        <div class="date-time">{{ currentDateTime }}</div>
+        <router-link to="/dashboard" class="admin-info">{{ user.username }}</router-link>
+        <button @click="exitToHome" class="logout-btn">退出</button>
+    </div>
+    </header>
+
+    <!-- 滚动区域 -->
+    <div class="content">
+    <section 
+        v-for="section in filteredReportSections" 
+        :key="section.id" 
+        :class="['report-section', section.layout === 'horizontal' ? 'horizontal-layout' : 'vertical-layout']"
+    >
+        <h2 class="section-title">{{ section.title }}</h2>
+        <div class="info-container">
+        <p v-for="(item, index) in section.fields" :key="index">
+            <strong>{{ item.label }}：</strong>{{ item.value }}
+        </p>
+        </div>
+    </section>
+    </div>
+
+    <!-- 打印按钮固定在右下角 -->
+    <div class="actions">
+    <button @click="print">打印</button>
+    </div>
+</div>
 </template>
 
 <script>
-import { useAuthStore } from '../store/index.js'; // 导入 Pinia Store
-import { computed, onMounted, ref } from 'vue'; // 确保导入了 ref
+import { useReportStore } from '../store/report'; // 引入报告 store
+import { useAuthStore } from '../store/index.js'; // 引入认证 store
+import { computed, onMounted, ref, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 
 export default {
-    name: "MedicalRecord",
-    props: {
-        // 通过 props 接收数据
-        reportData: {
-            type: Object,
-            default: () => ({})
+  name: "MedicalRecord",
+  setup() {
+    const reportStore = useReportStore(); // 获取报告 store 实例
+    const authStore = useAuthStore();
+    const router = useRouter();
+
+    // 计算属性获取当前用户
+    const user = computed(() => authStore.user);
+
+    // 获取报告数据
+    const reportData = computed(() => ({
+      ...reportStore.patientBasicInfo,
+      ...reportStore.patientDetailedInfo,
+      lastAIReply: reportStore.lastAIReply,
+    }));
+
+    // 计算属性获取就诊类型
+    const visitType = computed(() => reportData.value.visitType || '复诊');
+
+    // 定义映射关系，使用可选链操作符防止 undefined 错误
+    const lastRecord = computed(() => reportStore.patientDetailedInfo.revisitInfo?.lastRecord || {});
+    const chiefComplaint = computed(() => lastRecord.value.chiefComplaint || "无");
+    const presentIllness = computed(() => lastRecord.value.presentIllness || "无");
+    const familyHistory = computed(() => reportStore.patientDetailedInfo.latestMedicalRecord?.pastHistory?.familyHistory || "无");
+
+    const pastHistory = computed(() => reportStore.patientDetailedInfo.latestMedicalRecord?.pastHistory || {});
+
+    const combinedPastHistory = computed(() => {
+      if (!pastHistory.value) return "无";
+      return `${pastHistory.value.personalHistory || "无"}；${pastHistory.value.bloodTransfusionHistory || "无"}；${pastHistory.value.diseaseHistory || "无"}；${pastHistory.value.epidemiologicalHistory || "无"}；${pastHistory.value.surgeryHistory || "无"}`;
+    });
+
+    // 改进的解析 lastAIReply 的计算属性
+    const parsedAIReply = computed(() => {
+      const reply = reportData.value.lastAIReply || "";
+      const result = {
+        主诉: "无",
+        现病史: "无",
+        既往史: "无",
+        家族史: "无",
+      };
+
+      // 使用更强大的正则表达式匹配所有标签及其内容
+      const regex = /(主诉|现病史|既往史|家族史)[：:]\s*([\s\S]*?)(?=(主诉|现病史|既往史|家族史)[：:]|$)/g;
+      let match;
+      while ((match = regex.exec(reply)) !== null) {
+        const label = match[1];
+        const content = match[2].replace(/\n/g, '').trim(); // 移除换行符并修剪空格
+        if (result.hasOwnProperty(label)) {
+          result[label] = content;
         }
-    },
-    setup(props) {
-        const authStore = useAuthStore();
-        const router = useRouter();
+      }
 
-        // 计算属性获取当前用户
-        const user = computed(() => authStore.user);
+      return result;
+    });
 
-        // 计算属性获取就诊类型
-        const visitType = computed(() => props.reportData.visitType || '复诊');
+    // 定义报告部分
+    const reportSections = computed(() => [
+      {
+        id: 1,
+        title: "基本信息",
+        layout: "horizontal",
+        fields: [
+          { label: "就诊科室", value: reportData.value.department || "皮肤科" },
+          { label: "就诊医生", value: reportData.value.doctor || "陈宁刚" },
+          { label: "就诊日期", value: reportData.value.visitDate || "2025-1-14 9:30" },
+          { label: "就诊类型", value: visitType.value } // 动态值
+        ],
+      },
+      {
+        id: 2,
+        title: "一般状况",
+        layout: "horizontal",
+        fields: [
+          { label: "过敏史", value: reportData.value.allergyHistory || "海鲜过敏；青霉素过敏；" },
+          { label: "身高", value: reportData.value.height || "178cm" },
+          { label: "体重", value: reportData.value.weight || "75kg" },
+          { label: "BMI", value: reportData.value.bmi || "23.6（正常）" },
+          { label: "体温", value: reportData.value.temperature || "36.8℃（体温正常）" },
+          { label: "收缩压", value: reportData.value.systolicBP || "135mmHg" },
+          { label: "舒张压", value: reportData.value.diastolicBP || "76mmHg（血压正常）" },
+        ],
+      },
+      {
+        id: 3,
+        title: "中医四诊信息",
+        layout: "horizontal",
+        fields: [
+          { label: "舌相", value: reportData.value.tongue || "舌淡红" },
+          { label: "苔", value: reportData.value.coating || "黄苔，厚苔、腻苔" },
+          { label: "唇色", value: reportData.value.lipColor || "黯淡" },
+          { label: "面色", value: reportData.value.faceColor || "红黄隐隐，明润含蓄" },
+          { label: "脉", value: reportData.value.pulse || "滑脉" },
+        ],
+      },
+      {
+        id: 4,
+        title: "本次就诊问题摘要",
+        layout: "vertical",
+        fields: [
+          { label: "主诉", value: parsedAIReply.value.主诉 },
+          { label: "现病史", value: parsedAIReply.value.现病史 },
+          { label: "既往史", value: parsedAIReply.value.既往史 },
+          { label: "家族史", value: parsedAIReply.value.家族史 },
+        ],
+      },
+      {
+        id: 5,
+        title: "既往就诊情况摘要",
+        layout: "vertical",
+        fields: [
+          { label: "初次就诊", value: reportData.value.firstVisit || "您于2024-4-1日初次就诊，开立XXX药品，疗效良好；" },
+          { label: "第二次就诊", value: reportData.value.secondVisit || "于2024-4-8日第二次就诊，开立XXX药品，疗效良好；" },
+        ],
+      },
+      {
+        id: 6,
+        title: "下次复诊提醒",
+        layout: "vertical",
+        fields: [
+          { label: "复诊时间", value: reportData.value.nextVisitReminder || "预计2024-4-22日前往医院进行复诊，请及时挂号就诊。" },
+        ],
+      },
+      // 添加最后一次 AI 回复部分
+      {
+        id: 7,
+        title: "本次就诊问题摘要测试",
+        layout: "vertical",
+        fields: [
+          { label: "本次就诊问题摘要测试", value: reportData.value.lastAIReply || "无" },
+        ],
+      },
+    ]);
 
-        // 定义报告部分
-        const reportSections = computed(() => [
-            {
-                id: 1,
-                title: "基本信息",
-                layout: "horizontal",
-                fields: [
-                    { label: "就诊科室", value: props.reportData.department || "皮肤科" },
-                    { label: "就诊医生", value: props.reportData.doctor || "陈宁刚" },
-                    { label: "就诊日期", value: props.reportData.visitDate || "2025-1-14 9:30" },
-                    { label: "就诊类型", value: visitType.value } // 动态值
-                ],
-            },
-            {
-                id: 2,
-                title: "一般状况",
-                layout: "horizontal",
-                fields: [
-                    { label: "过敏史", value: props.reportData.allergyHistory || "海鲜过敏；青霉素过敏；" },
-                    { label: "身高", value: props.reportData.height || "178cm" },
-                    { label: "体重", value: props.reportData.weight || "75kg" },
-                    { label: "BMI", value: props.reportData.bmi || "23.6（正常）" },
-                    { label: "体温", value: props.reportData.temperature || "36.8℃（体温正常）" },
-                    { label: "收缩压", value: props.reportData.systolicBP || "135mmHg" },
-                    { label: "舒张压", value: props.reportData.diastolicBP || "76mmHg（血压正常）" },
-                ],
-            },
-            {
-                id: 3,
-                title: "中医四诊信息",
-                layout: "horizontal",
-                fields: [
-                    { label: "舌相", value: props.reportData.tongue || "舌淡红" },
-                    { label: "苔", value: props.reportData.coating || "黄苔，厚苔、腻苔" },
-                    { label: "唇色", value: props.reportData.lipColor || "黯淡" },
-                    { label: "面色", value: props.reportData.faceColor || "红黄隐隐，明润含蓄" },
-                    { label: "脉", value: props.reportData.pulse || "滑脉" },
-                ],
-            },
-            {
-                id: 4,
-                title: "本次就诊问题摘要",
-                layout: "vertical",
-                fields: [
-                    { label: "症状", value: props.reportData.symptoms || "皮肤起红疹3天；部位：胳膊、胸前、背部；" },
-                    { label: "用药情况", value: props.reportData.medication || "已自行服用氯雷他定，效果不佳；" },
-                    { label: "病史", value: props.reportData.medicalHistory || "患有高血压、糖尿病；曾于2021-1-1日进行阑尾炎手术；" },
-                    { label: "婚育情况", value: props.reportData.maritalStatus || "已婚已育；" },
-                ],
-            },
-            {
-                id: 5,
-                title: "既往就诊情况摘要",
-                layout: "vertical",
-                fields: [
-                    { label: "初次就诊", value: props.reportData.firstVisit || "您于2024-4-1日初次就诊，开立XXX药品，疗效良好；" },
-                    { label: "第二次就诊", value: props.reportData.secondVisit || "于2024-4-8日第二次就诊，开立XXX药品，疗效良好；" },
-                ],
-            },
-            {
-                id: 6,
-                title: "下次复诊提醒",
-                layout: "vertical",
-                fields: [
-                    { label: "复诊时间", value: props.reportData.nextVisitReminder || "预计2024-4-22日前往医院进行复诊，请及时挂号就诊。" },
-                ],
-            },
-        ]);
+    // 根据 visitType 过滤报告部分
+    const filteredReportSections = computed(() => {
+      if (visitType.value === '初诊') {
+        // 过滤掉 "既往就诊情况摘要" 部分
+        return reportSections.value.filter(section => section.title !== "既往就诊情况摘要");
+      }
+      return reportSections.value;
+    });
 
-        // 根据 visitType 过滤报告部分
-        const filteredReportSections = computed(() => {
-            if (visitType.value === '初诊') {
-                // 过滤掉 "既往就诊情况摘要" 部分
-                return reportSections.value.filter(section => section.title !== "既往就诊情况摘要");
-            }
-            return reportSections.value;
+    // 当前日期时间
+    const currentDateTime = ref(new Date().toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }));
+
+    // 动态更新时间
+    const updateDateTime = () => {
+      setInterval(() => {
+        currentDateTime.value = new Date().toLocaleString('zh-CN', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
         });
+      }, 60000); // 每分钟更新一次
+    };
 
-        // 当前日期时间
-        const currentDateTime = ref(new Date().toLocaleString('zh-CN', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        }));
+    const exitToHome = () => {
+      router.push('/');
+    };
 
-        // 动态更新时间
-        const updateDateTime = () => {
-            setInterval(() => {
-                currentDateTime.value = new Date().toLocaleString('zh-CN', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            }, 60000); // 每分钟更新一次
-        };
+    // 打印功能
+    const print = () => {
+      window.print();
+    };
 
-        const exitToHome = () => {
-            router.push('/');
-        };
+    onMounted(() => {
+      // 启动动态更新时间
+      updateDateTime();
+    });
 
-        // 打印功能
-        const print = () => {
-            window.print();
-        };
+    // 清理报告数据以避免数据残留
+    onBeforeUnmount(() => {
+      reportStore.clearReportData();
+    });
 
-        onMounted(() => {
-            // 启动动态更新时间
-            updateDateTime();
-        });
-
-        return {
-            currentDateTime,
-            filteredReportSections,
-            user,
-            exitToHome,
-            print
-        };
-    }
+    return {
+      currentDateTime,
+      filteredReportSections,
+      user,
+      exitToHome,
+      print
+    };
+  }
 };
 </script>
+
 
 <style scoped>
 /* 引入更现代的字体 */
@@ -422,3 +476,4 @@ export default {
     }
 }
 </style>
+  
