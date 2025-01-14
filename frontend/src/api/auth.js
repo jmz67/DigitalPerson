@@ -4,7 +4,7 @@ import { useAuthStore } from '../store';
 import router from '../router';
 
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:5000/v2/auth',
+  baseURL: '/api/v2/auth',
   headers: {
     'Content-Type': 'application/json',
   },

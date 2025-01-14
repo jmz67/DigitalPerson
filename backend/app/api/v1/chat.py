@@ -41,7 +41,7 @@ async def chat_message(
     logger.debug(f"Request data: {request.model_dump_json()}")
 
     try:
-        doctor_question, chat_type, recommendation_texts, new_conversation_id = await chat_service.process_chat_message(
+        doctor_question, chat_type, recommendation_texts, new_conversation_id = await chat_service.process_chat_message_v1(
             request.message,
             request.conversation_id
         )

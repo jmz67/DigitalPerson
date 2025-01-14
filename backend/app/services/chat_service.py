@@ -36,7 +36,7 @@ class ChatService:
         wait=wait_exponential(multiplier=1, min=2, max=10),
         reraise=True
     )
-    async def process_chat_message(
+    async def process_chat_message_v1(
         self, 
         message: str, 
         conversation_id: Optional[str] = None
@@ -117,6 +117,92 @@ class ChatService:
             logger.error(f"Error calling the API: {e}")
             raise
 
+    
+    async def process_chat_message_v2(
+        self, 
+        message: str, 
+        conversation_id: Optional[str] = None
+    ) -> Tuple[Optional[str], Optional[str], List[str], Optional[str]]:
+        """
+        调用外部接口，解析返回数据，并添加重试机制
+        """
+        payload = {
+            "inputs": {},
+            "query": message,  # 用前端传来的 message
+            "response_mode": "blocking",
+            "conversation_id": conversation_id or "",
+            "user": "abc-123",
+            "files": [],
+        }
+
+        headers = {
+            "Authorization": "Bearer app-ZpkC6eatzXmILEJocQDqQWye",
+            "Content-Type": "application/json"
+        }
+
+        try:
+            logger.info("Processing chat message (v2)")
+            logger.debug(f"External API URL: http://47.99.172.64:23016/v1/chat-messages")
+            logger.debug(f"Payload: {json.dumps(payload, ensure_ascii=False)}")
+            logger.debug(f"Headers: {json.dumps(headers, ensure_ascii=False)}")
+
+            # 调用外部接口
+            response = await self.client.post(
+                "http://47.99.172.64:23016/v1/chat-messages",
+                json=payload,
+                headers=headers
+            )
+
+            logger.info(f"Received response: {response}")
+
+            if response.status_code >= 500:
+                # 对于服务器错误，抛出自定义异常以触发重试
+                raise TemporaryAPIError(f"Server error: {response.status_code}")
+
+            response.raise_for_status()
+
+            # 解析返回结果
+            result = response.json()
+            logger.debug(f"Response JSON: {json.dumps(result, ensure_ascii=False, indent=2)}")
+
+            # 获取 answer 字段
+            answer_text = result.get("answer", "").strip()
+
+            # 提取 doctor_question
+            doctor_question = ""
+            doctor_question_match = re.search(r"问题：(.*?)(?=\n推荐回答：|\Z)", answer_text, re.S)
+            if doctor_question_match:
+                doctor_question = doctor_question_match.group(1).strip()
+
+            # 提取 recommendation_texts
+            recommendation_texts = []
+            recommendation_texts_match = re.search(r"推荐回答：(.*?)(?=\n|$)", answer_text, re.S)
+            if recommendation_texts_match:
+                recommendation_texts_raw = recommendation_texts_match.group(1).strip()
+                recommendation_texts = re.findall(r"\d+\.\s*([^0-9]+)", recommendation_texts_raw)
+
+            # 提取 chat_type
+            chat_type = "unknown"
+            chat_type_match = re.search(r"chat_type:\s*(\w+)", answer_text)
+            if chat_type_match:
+                chat_type = chat_type_match.group(1).strip()
+
+            # 提取 conversation_id
+            new_conversation_id = result.get("conversation_id", "")
+
+            logger.info(
+                f"解析结果: doctor_question={doctor_question}, "
+                f"recommendation_texts={recommendation_texts}, "
+                f"chat_type={chat_type}, "
+                f"conversation_id={new_conversation_id}"
+            )
+
+            return doctor_question, chat_type, recommendation_texts, new_conversation_id
+
+        except (httpx.RequestError, TemporaryAPIError) as e:
+            logger.error(f"Error calling the API: {e}")
+            raise
+    
     # 使用 tenacity 装饰器为 push_structured_text 添加重试机制
     @retry(
         retry=retry_if_exception_type((httpx.RequestError, TemporaryAPIError)),

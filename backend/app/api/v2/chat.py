@@ -7,8 +7,26 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel
 import logging
 
-from app.services.chat_service import ChatService
 from app.config import Config
+from app.services.chat_service import ChatService
+
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
+
+@retry(
+    stop=stop_after_attempt(3),  # 最多重试3次
+    wait=wait_fixed(2),          # 每次重试间隔2秒
+    retry=retry_if_exception_type(requests.exceptions.RequestException),  # 仅在网络请求异常时重试
+)
+def call_external_api(url: str, headers: dict, post_data: dict, timeout: int = 15):
+    """
+    调用外部API，并处理重试逻辑
+    """
+    logger.info(f"调用大模型接口: {url}, post_data: {post_data}")
+    resp = requests.post(url, json=post_data, headers=headers, timeout=timeout)
+    if resp.status_code != 200:
+        logger.error(f"外部接口返回非 200 状态码: {resp.status_code}")
+        raise HTTPException(status_code=resp.status_code, detail=f"外部接口错误: {resp.text}")
+    return resp.json()
 
 logger = logging.getLogger("app.api.chat_v2")
 
@@ -23,114 +41,40 @@ def get_config() -> Config:
     return Config()
 
 def get_chat_service(config: Config = Depends(get_config)) -> ChatService:
+    print(f"ChatService received config: {config.__dict__}")
     return ChatService(config)
 
 @router.post("/chatMessage")
-async def chat_message_v2(
+async def chat_message(
     request: ChatMessageRequest,
     background_tasks: BackgroundTasks,
-    chat_service: ChatService = Depends(get_chat_service),
+    chat_service: ChatService = Depends(get_chat_service)
 ):
-    """
-    新的 v2 接口：先调用外部接口 http://47.99.172.64:23016/v1/chat-messages，
-    拿到结果后，再进行定制化的结构化处理，返回给前端。
-    """
-    logger.info("Received chat message request (v2)")
+    logger.info("Received chat message request")
+    logger.debug(f"Request data: {request.model_dump_json()}")
 
-    # response_data = {
-    #         "doctor_question": "doctor_question",
-    #         "chat_type": "chat",
-    #         "recommendation_texts": ["recommendation_text1", "recommendation_text2"],
-    #         "conversation_id": 88888888,
-    #     }
-
-    # return response_data
-    
     try:
-        # 1. 组织请求体数据（外部接口需要的格式）
-        post_data = {
-            "inputs": {},
-            "query": request.message,                 # 用前端传来的 message
-            "response_mode": "blocking",
-            "conversation_id": request.conversation_id or "",
-            "user": "abc-123",                       # 看你业务需求，传固定或自定义
-            "files": [],
-        }
-
-        # 2. 调用外部接口
-        url = "http://47.99.172.64:23016/v1/chat-messages"
-        headers = {
-            "Authorization": "Bearer app-ZpkC6eatzXmILEJocQDqQWye"
-        }
-
-        logger.info(f"调用大模型接口: {url}, post_data: {post_data}")
-        
-        resp = requests.post(url, json=post_data, headers=headers, timeout=15)
-        if resp.status_code != 200:
-            logger.error(f"外部接口返回非 200 状态码: {resp.status_code}")
-            raise HTTPException(status_code=resp.status_code, detail=f"外部接口错误: {resp.text}")
-
-        result = resp.json()
-
-        logger.info(f"大模型接口返回结果: {result}")
-
-        """
-        预期返回值示例（简化）:
-        {
-            "event": "message",
-            "conversation_id": "398b327d-cdc0-43bd-bd6c-5783e607382b",
-            "answer": "问题：皮肤哪里不舒服？\n推荐回答：1. 脸部 2. 手臂 3. 大腿 4. 其他？",
-            "metadata": { ... },
-            ...
-        }
-        """
-
-        # 3. 从 result 中解析出 doctor_question, recommendation_texts, conversation_id 等
-        # 获取 answer 字段
-        answer_text = result.get("answer", "").strip()
-
-        # 提取 doctor_question
-        doctor_question = ""
-        doctor_question_match = re.search(r"问题：(.*?)(?=\n推荐回答：|\Z)", answer_text, re.S)
-        if doctor_question_match:
-            doctor_question = doctor_question_match.group(1).strip()
-
-        # 提取 recommendation_texts
-        recommendation_texts = []
-        recommendation_texts_match = re.search(r"推荐回答：(.*?)(?=\n|$)", answer_text, re.S)
-        if recommendation_texts_match:
-            recommendation_texts_raw = recommendation_texts_match.group(1).strip()
-            recommendation_texts = re.findall(r"\d+\.\s*([^0-9]+)", recommendation_texts_raw)
-
-        # 提取 chat_type
-        chat_type = "unknown"
-        chat_type_match = re.search(r"chat_type:\s*(\w+)", answer_text)
-        if chat_type_match:
-            chat_type = chat_type_match.group(1).strip()
-
-        # 提取 conversation_id
-        conversation_id = result.get("conversation_id", "")
-
-        # 打印解析结果
-        logger.info(
-            f"解析结果: doctor_question={doctor_question}, "
-            f"recommendation_texts={recommendation_texts}, "
-            f"chat_type={chat_type}, "
-            f"conversation_id={conversation_id}"
+        doctor_question, chat_type, recommendation_texts, new_conversation_id = await chat_service.process_chat_message_v2(
+            request.message,
+            request.conversation_id
         )
 
-        # 构造最终的 response_data
+        # 使用 BackgroundTasks 进行后台处理
+        if doctor_question:
+            text_id = str(uuid.uuid4())  # 生成唯一的 text_id
+            background_tasks.add_task(chat_service.push_structured_text, text_id, doctor_question, request.sid)
+            logger.info(f"Added background task to push structured text with text_id: {text_id}")
+
         response_data = {
-            "doctor_question": doctor_question,
-            "chat_type": chat_type,
-            "recommendation_texts": recommendation_texts,
-            "conversation_id": conversation_id,
+            'doctor_question': doctor_question,
+            'chat_type': chat_type,
+            'recommendation_texts': recommendation_texts,
+            'conversation_id': new_conversation_id
         }
-
+        logger.debug(f"Response data: {response_data}")
         return response_data
-
     except Exception as e:
-        logger.error(f"Error in chat_message_v2: {e}")
+        logger.error(f"Error processing chat message: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 from sqlalchemy.orm import Session

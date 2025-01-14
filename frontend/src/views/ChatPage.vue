@@ -461,6 +461,9 @@ export default {
         this.lastAssistantMessageIndex = this.messages.length - 1;
       }
 
+      // 清空上一次选中状态
+      this.selectedRecommendations = [];
+
       this.currentRecommendations = this.pendingRecommendations;
 
       console.log('即将保存的消息:', {
@@ -488,13 +491,20 @@ export default {
     toggleRecommendation(rec) {
       const index = this.selectedRecommendations.indexOf(rec);
       if (index > -1) {
+        // 如果已经选中，则执行“取消选中”操作
         this.selectedRecommendations.splice(index, 1);
-        const regex = new RegExp(`\\b${this.escapeRegExp(rec)}\\b`, 'g');
-        this.input = this.input.replace(regex, '').replace(/\s\s+/g, ' ').trim();
+        // 用空格拆分 input，然后过滤掉取消的推荐回答
+        const splitted = this.input.split(/\s+/).filter(Boolean);
+        const filtered = splitted.filter(item => item !== rec);
+        this.input = filtered.join(' ');
       } else {
+        // 如果尚未选中，则执行“选中”操作
         this.selectedRecommendations.push(rec);
-        if (!this.input.includes(rec)) {
-          this.input += (this.input ? ' ' : '') + rec;
+        // 若输入框中没有，则追加到后面（用空格隔开）
+        if (!this.input.split(/\s+/).includes(rec)) {
+          this.input = this.input
+            ? this.input.trim() + ' ' + rec
+            : rec;
         }
       }
     },
@@ -654,53 +664,73 @@ export default {
       this.showPendingAssistantMessage();
     };
 
+    // window.receiveDigitalPersonIdentifyData = (param) => {
+    //   try {
+    //     if (typeof param === 'string') {
+    //       param = JSON.parse(param);
+    //     }
+    //     if (param && param.identifyText) {
+    //       // 使用 SweetAlert2 替换原生 alert
+    //       Swal.fire({
+    //         title: '检测到文本',
+    //         text: `是否将以下文本插入输入框？\n\n${param.identifyText}`,
+    //         icon: 'info',
+    //         showCancelButton: true, // 显示取消按钮
+    //         confirmButtonText: '确定', // 确定按钮文字
+    //         cancelButtonText: '取消', // 取消按钮文字
+    //         reverseButtons: true, // 交换确定、取消按钮的位置（可选）
+    //         width: 400, // 直接设置宽度像素值或百分比
+    //       }).then((result) => {
+    //         if (result.isConfirmed) {
+    //           // 用户点击“确定”时才将文本放入输入框
+    //           this.input = param.identifyText;
+    //           // 如需可再弹一个提示“已插入”
+    //           // Swal.fire('已插入', '', 'success');
+    //         } else {
+    //           // 用户点击“取消”或关闭弹窗则不做任何处理
+    //           console.log('用户取消了插入文本');
+    //         }
+    //       });
+    //     } else {
+    //       console.error('无效的参数，缺少 identifyText');
+    //       // 这里也可以用 Swal 弹窗提示
+    //       Swal.fire({
+    //         title: '错误',
+    //         text: '无效的参数，缺少 identifyText',
+    //         icon: 'error',
+    //         confirmButtonText: '确定',
+    //         width: 400, // 直接设置宽度像素值或百分比
+    //       });
+    //     }
+    //   } catch (error) {
+    //     console.error('解析 param 为 JSON 时发生错误:', error);
+    //     Swal.fire({
+    //       title: '解析错误',
+    //       text: '解析参数时发生错误',
+    //       icon: 'error',
+    //       confirmButtonText: '确定',
+    //       width: 400, // 直接设置宽度像素值或百分比
+    //     });
+    //   }
+    // };
+
     window.receiveDigitalPersonIdentifyData = (param) => {
       try {
+        let parsedParam = param;
+        // 如果参数是字符串，则尝试解析为 JSON 对象
         if (typeof param === 'string') {
-          param = JSON.parse(param);
+          parsedParam = JSON.parse(param);
         }
-        if (param && param.identifyText) {
-          // 使用 SweetAlert2 替换原生 alert
-          Swal.fire({
-            title: '检测到文本',
-            text: `是否将以下文本插入输入框？\n\n${param.identifyText}`,
-            icon: 'info',
-            showCancelButton: true, // 显示取消按钮
-            confirmButtonText: '确定', // 确定按钮文字
-            cancelButtonText: '取消', // 取消按钮文字
-            reverseButtons: true, // 交换确定、取消按钮的位置（可选）
-            width: 400, // 直接设置宽度像素值或百分比
-          }).then((result) => {
-            if (result.isConfirmed) {
-              // 用户点击“确定”时才将文本放入输入框
-              this.input = param.identifyText;
-              // 如需可再弹一个提示“已插入”
-              // Swal.fire('已插入', '', 'success');
-            } else {
-              // 用户点击“取消”或关闭弹窗则不做任何处理
-              console.log('用户取消了插入文本');
-            }
-          });
+
+        // 检查是否成功获取到 identifyText
+        if (parsedParam && parsedParam.identifyText) {
+          // 直接将文本插入输入框，没有用户交互或确认
+          this.input = parsedParam.identifyText;
         } else {
           console.error('无效的参数，缺少 identifyText');
-          // 这里也可以用 Swal 弹窗提示
-          Swal.fire({
-            title: '错误',
-            text: '无效的参数，缺少 identifyText',
-            icon: 'error',
-            confirmButtonText: '确定',
-            width: 400, // 直接设置宽度像素值或百分比
-          });
         }
       } catch (error) {
         console.error('解析 param 为 JSON 时发生错误:', error);
-        Swal.fire({
-          title: '解析错误',
-          text: '解析参数时发生错误',
-          icon: 'error',
-          confirmButtonText: '确定',
-          width: 400, // 直接设置宽度像素值或百分比
-        });
       }
     };
 
@@ -740,11 +770,12 @@ export default {
     try {
       const patientData = await fetchPatientInfo();
       this.patient = patientData;
+      // TODO: 这里加载聊天历史的逻辑还需要进行修改。
       // 如果已存在 conversation_id，则加载聊天历史
-      if (this.conversation_id) {
-        this.conversation_id = this.patient.conversation_id;
-        this.loadChatHistory();
-      }
+      // if (this.conversation_id) {
+      //   this.conversation_id = this.patient.conversation_id;
+      //   this.loadChatHistory();
+      // }
     } catch (error) {
       Swal.fire({
         title: '加载失败',
@@ -761,10 +792,9 @@ export default {
       const patientDetailResponse = await fetchPatientDetail(opcId);
       if (patientDetailResponse.code === 200) {
         this.patientDetail = patientDetailResponse.data;
-        // 将 patientDetail 中的部分数据映射到 this.patient，如果需要
+        // 将 patientDetail 中的部分数据映射到 this.patient，但是目前是写死
         // this.patient.id = this.patientDetail.patientIdentity.patientId;
         // this.patient.name = this.patientDetail.patientIdentity.idNumber; // 根据实际字段
-        // 其他字段根据需要设置
 
         // 发送 patientDetail 数据作为初始消息以获取欢迎词
         await this.sendInitialData();
@@ -782,9 +812,10 @@ export default {
     }
 
     // 如果 conversation_id 已存在（例如通过 URL 参数传递），加载聊天历史
-    if (this.conversation_id) {
-      this.loadChatHistory();
-    }
+    // TODO: 或许需要
+    // if (this.conversation_id) {
+    //   this.loadChatHistory();
+    // }
   },
 
   beforeDestroy() {

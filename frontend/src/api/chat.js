@@ -5,7 +5,7 @@ import axios from 'axios';
 
 // 创建一个 Axios 实例，基础 URL 指向 FastAPI 的 /api 路径
 const chatApi = axios.create({
-  baseURL: 'http://127.0.0.1:5000/v2', // 请根据您的实际 FastAPI 服务器地址进行调整
+  baseURL: '/api/v2', // 请根据您的实际 FastAPI 服务器地址进行调整
   headers: {
     'Content-Type': 'application/json',
   },

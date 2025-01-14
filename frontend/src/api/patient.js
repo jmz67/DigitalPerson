@@ -6,7 +6,7 @@ import axios from 'axios';
  */
 export async function fetchPatientInfo() {
     try {
-      const response = await axios.get('http://127.0.0.1:5000/v2/patientInfo');
+      const response = await axios.get('/api/v2/patientInfo');
       return response.data;
     } catch (error) {
       console.error('Error fetching patient info:', error);
@@ -16,7 +16,7 @@ export async function fetchPatientInfo() {
 
 export async function fetchPatientDetail(opcId) {
   try {
-    const response = await axios.get(`http://127.0.0.1:5000/v2/patientDetail/${opcId}`);
+    const response = await axios.get(`/api/v2/patientDetail/${opcId}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching patient detail:', error);

@@ -17,7 +17,7 @@ def parse_result(result):
     if recommendation_texts_match:
         recommendation_texts_raw = recommendation_texts_match.group(1).strip()
         recommendation_texts = re.findall(r"\d+\.\s*([^0-9]+)", recommendation_texts_raw)
-
+    
     # 提取 chat_type
     chat_type = "unknown"
     chat_type_match = re.search(r"chat_type:\s*(\w+)", answer_text)
