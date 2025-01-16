@@ -5,6 +5,7 @@ export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: localStorage.getItem('token') || '',
     user: JSON.parse(localStorage.getItem('user')) || null,
+    scanCode: '', 
   }),
   getters: {
     isAuthenticated: (state) => !!state.token,
@@ -18,9 +19,13 @@ export const useAuthStore = defineStore('auth', {
       this.user = user;
       localStorage.setItem('user', JSON.stringify(user));
     },
+    setScanCode(scanCode) {
+      this.scanCode = scanCode; 
+    },
     logout() {
       this.token = '';
       this.user = null;
+      this.scanCode = ''; 
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     },

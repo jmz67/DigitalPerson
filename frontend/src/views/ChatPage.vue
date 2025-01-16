@@ -217,6 +217,7 @@ export default {
       // 是否开启麦克风
       microphoneOpen: false,
       patientDetail: null, // 存储患者详细信息
+      opcId: null, // 新增 opcId 作为响应式数据
     };
   },
   methods: {
@@ -788,8 +789,12 @@ export default {
 
     // 获取患者详细信息并发送欢迎词
     try {
-      const opcId = 'OPC004'; // 硬编码 OPCID 为 'OPC004'
-      const patientDetailResponse = await fetchPatientDetail(opcId);
+      const scanCode = authStore.scanCode;
+      console.log("scanCode:", scanCode);
+      
+      this.opcId = scanCode;
+      
+      const patientDetailResponse = await fetchPatientDetail(this.opcId);
       if (patientDetailResponse.code === 200) {
         this.patientDetail = patientDetailResponse.data;
         // 将 patientDetail 中的部分数据映射到 this.patient，但是目前是写死

@@ -15,37 +15,37 @@ const routes = [
     path: '/',
     name: 'HomePage',
     component: HomePage,
-    meta: { requiresAuth: true }, // 需要认证
+    meta: { requiresAuth: true }, 
   },
   {
     path: '/login',
     name: 'LoginPage',
     component: LoginPage,
-    meta: { requiresAuth: false }, // 不需要认证
+    meta: { requiresAuth: false }, 
   },
   {
     path: '/register',
     name: 'RegisterPage',
     component: RegisterPage,
-    meta: { requiresAuth: false }, // 不需要认证
+    meta: { requiresAuth: false }, 
   },
   {
     path: '/chat',
     name: 'ChatPage',
     component: ChatPage,
-    meta: { requiresAuth: true }, // 需要认证
+    meta: { requiresAuth: true }, 
   },
   {
     path: '/report',
     name: 'ReportPage',
     component: ReportPage,
-    meta: { requiresAuth: true }, // 需要认证
+    meta: { requiresAuth: true }, 
   },
   {
     path: '/pro-test',
     name: 'TestPage',
     component: TestPage,
-    meta: { requiresAuth: true }, // 需要认证
+    meta: { requiresAuth: true }, 
   },
   {
     path: '/dashboard',
