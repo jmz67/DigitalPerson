@@ -632,13 +632,13 @@ export default {
         if (param && param.sessionId) {
           this.sid = param.sessionId;
           // 使用 SweetAlert2：
-          Swal.fire({
-            title: '数字人已成功打开',
-            text: 'Session ID: ' + this.sid,
-            icon: 'success',
-            confirmButtonText: '确定',
-            width: 400, // 直接设置宽度像素值或百分比
-          });
+          // Swal.fire({
+          //   title: '数字人已成功打开',
+          //   text: 'Session ID: ' + this.sid,
+          //   icon: 'success',
+          //   confirmButtonText: '确定',
+          //   width: 400, // 直接设置宽度像素值或百分比
+          // });
         } else {
           console.error('无效的参数，缺少 sessionId');
           Swal.fire({
