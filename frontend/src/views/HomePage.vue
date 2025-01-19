@@ -15,12 +15,8 @@
                 id="scanCode" 
                 v-model="scanCodeValue" 
                 @input="handleInput"
-                @keydown.enter="handleEnterKey"
                 ref="scanCodeInput"
             />
-            <button @click="handleEnterKey" class="ml-2">
-                <font-awesome-icon icon="fa-solid fa-paper-plane" />
-            </button>
         </div>
     </div>
     </div>
@@ -237,7 +233,7 @@ margin-top: 5px;
 }
 
 .hidden-input {
-opacity: 100;
+opacity: 0;
 height: 1;
 overflow: hidden;
 }
